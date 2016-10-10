@@ -97,6 +97,43 @@ class ArrayDiffTests: XCTestCase {
 		let indexPath3 = NSIndexPath(indexes: [1, 0], length: 2)
 		XCTAssertEqual(sections[indexPath3], 4)
 	}
+    
+    func testModificationDetection() {
+        let old = "a b c d e".componentsSeparatedByString(" ")
+        let oldWrapped = old.map { TestModifyType(value: $0, hashValue: 0) }
+        let new = "m a b f".componentsSeparatedByString(" ")
+        let newWrapped = new.map { TestModifyType(value: $0, hashValue: ($0 == "a" ? 0 : 1)) }
+        let diff = oldWrapped.diff(newWrapped)
+        
+        let expectedModifications = NSMutableIndexSet()
+        expectedModifications.addIndex(1)
+        
+        XCTAssertEqual(expectedModifications, diff.modifiedIndexes)
+    }
+    
+    func testMovesDetection() {
+        let old = "a b c d e".componentsSeparatedByString(" ")
+        let oldWrapped = old.map { TestModifyType(value: $0, hashValue: 0) }
+        let new = "m b f a".componentsSeparatedByString(" ")
+        let newWrapped = new.map { TestModifyType(value: $0, hashValue: 0) }
+        let diff = oldWrapped.diff(newWrapped)
+        
+        let expectedRemoved = NSMutableIndexSet()
+        expectedRemoved.addIndex(2)
+        expectedRemoved.addIndex(3)
+        expectedRemoved.addIndex(4)
+        
+        let expectedInserted = NSMutableIndexSet()
+        expectedInserted.addIndex(0)
+        expectedInserted.addIndex(2)
+        
+        let expectedMoved = [0:3]
+        
+        XCTAssertEqual(expectedRemoved, diff.removedIndexes)
+        XCTAssertEqual(expectedInserted, diff.insertedIndexes)
+        XCTAssertEqual(expectedMoved, diff.movedIndexes)
+
+    }
 }
 
 struct TestType {
@@ -105,4 +142,17 @@ struct TestType {
 	static func customEqual(t0: TestType, t1: TestType) -> Bool {
 		return t0.value == t1.value
 	}
+}
+
+struct TestModifyType: Hashable {
+    var value: String
+    var hashValue: Int
+
+    static func customEqual(t0: TestModifyType, t1: TestModifyType) -> Bool {
+        return t0.value == t1.value
+    }
+}
+
+func ==(lhs: TestModifyType, rhs: TestModifyType) -> Bool {
+    return lhs.value == rhs.value
 }

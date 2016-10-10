@@ -12,6 +12,8 @@ public struct ArrayDiff {
 	public let insertedIndexes: NSIndexSet
     /// The indexes in the old array of the items that were modified
     public let modifiedIndexes: NSIndexSet
+    /// The map of old indexes to new indexes in the array of the items that were moved
+    public let movedIndexes: [Int: Int]
 	
 	/// Returns nil if the item was inserted
 	public func oldIndexForNewIndex(index: Int) -> Int? {
@@ -56,7 +58,7 @@ public struct ArrayDiff {
 
 public extension Array {
 	
-	public func diff(other: Array<Element>, elementsAreEqual: ((Element, Element) -> Bool)) -> ArrayDiff {
+    public func diff(other: Array<Element>, elementsAreEqual: ((Element, Element) -> Bool), treatMovesAsRemoveInsert: Bool = true) -> ArrayDiff {
 		var lengths: [[Int]] = Array<Array<Int>>(
 			count: count + 1,
 			repeatedValue: Array<Int>(
@@ -107,8 +109,30 @@ public extension Array {
 				j += 1
 			}
 		}
+        
+        if treatMovesAsRemoveInsert == false {
+            
+            var movedIndexes = [Int: Int]()
+            let deletedIndexes = removedIndexes.mutableCopy() as! NSMutableIndexSet
+            let insertedIndexes = addedIndexes.mutableCopy() as! NSMutableIndexSet
+            
+            for oldIndex in removedIndexes {
+                
+                let oldElement = self[oldIndex]
+                
+                if let newIndex = other.indexOf({ elementsAreEqual ($0, oldElement)}) {
+                    
+                    deletedIndexes.removeIndex(oldIndex)
+                    insertedIndexes.removeIndex(newIndex)
+                    
+                    movedIndexes[oldIndex] = newIndex
+                }
+            }
+            
+            return ArrayDiff(commonIndexes: commonIndexes, removedIndexes: deletedIndexes, insertedIndexes: insertedIndexes, modifiedIndexes: NSIndexSet(), movedIndexes: movedIndexes)
+        }
 		
-        return ArrayDiff(commonIndexes: commonIndexes, removedIndexes: removedIndexes, insertedIndexes: addedIndexes, modifiedIndexes: NSIndexSet())
+        return ArrayDiff(commonIndexes: commonIndexes, removedIndexes: removedIndexes, insertedIndexes: addedIndexes, modifiedIndexes: NSIndexSet(), movedIndexes: [Int: Int]())
 	}
 }
 
@@ -119,16 +143,16 @@ public extension Array where Element: Equatable {
 }
 public extension Array where Element: Hashable {
     public func diff(other: Array<Element>) -> ArrayDiff {
-        let diff = self.diff(other, elementsAreEqual: { $0 == $1 })
-        
-        let modifiedIndexes = NSMutableIndexSet()
+        let diff = self.diff(other, elementsAreEqual: { $0 == $1 }, treatMovesAsRemoveInsert: false)
 
+        let modifiedIndexes = NSMutableIndexSet()
+        
         for index in diff.commonIndexes {
-            if self[index].hashValue != other[index].hashValue {
+            if let newIndex = diff.newIndexForOldIndex(index) where self[index].hashValue != other[newIndex].hashValue {
                 modifiedIndexes.addIndex(index)
             }
         }
         
-        return ArrayDiff(commonIndexes: diff.commonIndexes, removedIndexes: diff.removedIndexes, insertedIndexes: diff.insertedIndexes, modifiedIndexes: modifiedIndexes)
+        return ArrayDiff(commonIndexes: diff.commonIndexes, removedIndexes: diff.removedIndexes, insertedIndexes: diff.insertedIndexes, modifiedIndexes: modifiedIndexes, movedIndexes: diff.movedIndexes)
     }
 }
