@@ -20,14 +20,7 @@ public struct ArrayDiff {
 		if insertedIndexes.containsIndex(index) { return nil }
         if let oldIndex = movedIndexes.allKeysForValue(index).first { return oldIndex }
 
-        let inserted = NSMutableIndexSet()
-        let removed = NSMutableIndexSet()
-        
-        inserted.addIndexes(insertedIndexes)
-        removed.addIndexes(removedIndexes)
-
-        movedIndexes.values.forEach{inserted.addIndex($0)}
-        movedIndexes.keys.forEach{removed.addIndex($0)}
+        let (removed, inserted) = self.mergedWithMovesRemovedAndInsertedIndexes()
         
 		var result = index
 
@@ -45,14 +38,7 @@ public struct ArrayDiff {
 		if removedIndexes.containsIndex(index) { return nil }
         if let newIndex = movedIndexes[index] { return newIndex }
 
-        let inserted = NSMutableIndexSet()
-        let removed = NSMutableIndexSet()
-        
-        inserted.addIndexes(insertedIndexes)
-        removed.addIndexes(removedIndexes)
-        
-        movedIndexes.values.forEach{inserted.addIndex($0)}
-        movedIndexes.keys.forEach{removed.addIndex($0)}
+        let (removed, inserted) = self.mergedWithMovesRemovedAndInsertedIndexes()
         
 		var result = index
 		let deletedBefore = removed.countOfIndexesInRange(NSMakeRange(0, index))
@@ -78,6 +64,24 @@ public struct ArrayDiff {
      */
     public var isEmpty: Bool {
         return removedIndexes.count == 0 && insertedIndexes.count == 0 && movedIndexes.count == 0 && modifiedIndexes.count == 0
+    }
+    
+    
+    /**
+     Returns removed and inserted indexes if moves treated as removes/inserts
+     */
+    public func mergedWithMovesRemovedAndInsertedIndexes() -> (removed: NSIndexSet, inserted: NSIndexSet) {
+        
+        let inserted = NSMutableIndexSet()
+        let removed = NSMutableIndexSet()
+        
+        inserted.addIndexes(insertedIndexes)
+        removed.addIndexes(removedIndexes)
+        
+        movedIndexes.values.forEach{inserted.addIndex($0)}
+        movedIndexes.keys.forEach{removed.addIndex($0)}
+        
+        return (removed, inserted)
     }
 }
 
