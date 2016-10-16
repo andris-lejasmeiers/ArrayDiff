@@ -21,6 +21,10 @@ public extension ArrayDiff {
 		// Inserts, ascending
 		collectionView.deleteItemsAtIndexPaths(removedIndexes.indexPathsInSection(section, ascending: false))
 		collectionView.insertItemsAtIndexPaths(insertedIndexes.indexPathsInSection(section))
+        
+        for (oldIndex, newIndex) in movedIndexes {
+            collectionView.moveItemAtIndexPath(NSIndexPath(forItem: oldIndex, inSection: section), toIndexPath: NSIndexPath(forItem: newIndex, inSection: section))
+        }
 	}
 
 	/**
@@ -35,6 +39,10 @@ public extension ArrayDiff {
 		// Inserts, ascending
 		tableView.deleteRowsAtIndexPaths(removedIndexes.indexPathsInSection(section, ascending: false), withRowAnimation: rowAnimation)
 		tableView.insertRowsAtIndexPaths(insertedIndexes.indexPathsInSection(section), withRowAnimation: rowAnimation)
+        
+        for (oldIndex, newIndex) in movedIndexes {
+            tableView.moveRowAtIndexPath(NSIndexPath(forRow: oldIndex, inSection: section), toIndexPath: NSIndexPath(forRow: newIndex, inSection: section))
+        }
 	}
 
 	/**
@@ -53,6 +61,9 @@ public extension ArrayDiff {
 		if insertedIndexes.count > 0 {
 			tableView.insertSections(insertedIndexes, withRowAnimation: rowAnimation)
 		}
+        for (oldIndex, newIndex) in movedIndexes {
+            tableView.moveSection(oldIndex, toSection: newIndex)
+        }
 	}
 
 	/**
@@ -71,6 +82,9 @@ public extension ArrayDiff {
 		if insertedIndexes.count > 0 {
 			collectionView.insertSections(insertedIndexes)
 		}
+        for (oldIndex, newIndex) in movedIndexes {
+            collectionView.moveSection(oldIndex, toSection: newIndex)
+        }
 	}
 }
 
@@ -85,7 +99,8 @@ public extension NestedDiff {
 		// Apply updates in safe order for good measure.
 		// Item deletes, descending
 		// Section deletes
-		// Section inserts
+        // Section inserts
+        // Section moves
 		// Item inserts, ascending
 		for (oldSection, diffOrNil) in itemDiffs.enumerate() {
 			if let diff = diffOrNil {
@@ -102,6 +117,17 @@ public extension NestedDiff {
 				}
 			}
 		}
+        for (oldSection, diffOrNil) in itemDiffs.enumerate() {
+            if let diff = diffOrNil {
+                if let newSection = sectionsDiff.newIndexForOldIndex(oldSection) {
+                    for (oldIndex, newIndex) in diff.movedIndexes {
+                        tableView.moveRowAtIndexPath(NSIndexPath(forRow: oldIndex, inSection: oldSection), toIndexPath: NSIndexPath(forRow: newIndex, inSection: newSection))
+                    }
+                } else {
+                    assertionFailure("Found an item diff for a section that was removed. Wat.")
+                }
+            }
+        }
 	}
 	
 	/**
@@ -131,5 +157,16 @@ public extension NestedDiff {
 				}
 			}
 		}
+        for (oldSection, diffOrNil) in itemDiffs.enumerate() {
+            if let diff = diffOrNil {
+                if let newSection = sectionsDiff.newIndexForOldIndex(oldSection) {
+                    for (oldIndex, newIndex) in diff.movedIndexes {
+                        collectionView.moveItemAtIndexPath(NSIndexPath(forItem: oldIndex, inSection: oldSection), toIndexPath: NSIndexPath(forItem: newIndex, inSection: newSection))
+                    }
+                } else {
+                    assertionFailure("Found an item diff for a section that was removed. Wat.")
+                }
+            }
+        }
 	}
 }

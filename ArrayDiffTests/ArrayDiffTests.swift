@@ -60,6 +60,15 @@ class ArrayDiffTests: XCTestCase {
 		let expectedNewIndexes: [Int?] = [0, 1, 2, 8]
 		XCTAssert(newIndexes.elementsEqual(expectedNewIndexes, isEquivalent: { $0 == $1 }), "Expected newIndexes to be \(expectedNewIndexes), got \(newIndexes)")
 	}
+    
+    func testNewIndexForOldIndexWithMoves() {
+        let old = "a b c d e".componentsSeparatedByString(" ")
+        let new = "m c b f a".componentsSeparatedByString(" ")
+        let diff = old.diff(new)
+        let newIndexes: [Int?] = (0..<old.count).map { diff.newIndexForOldIndex($0) }
+        let expectedNewIndexes: [Int?] = [4, 2, 1, nil, nil]
+        XCTAssert(newIndexes.elementsEqual(expectedNewIndexes, isEquivalent: { $0 == $1 }), "Expected newIndexes to be \(expectedNewIndexes), got \(newIndexes)")
+    }
 	
 	func testOldIndexForNewIndex() {
 		let old = "a b c d e".componentsSeparatedByString(" ")
@@ -69,6 +78,15 @@ class ArrayDiffTests: XCTestCase {
 		let expectedOldIndexes: [Int?] = [nil, 0, 1, nil]
 		XCTAssert(oldIndexes.elementsEqual(expectedOldIndexes, isEquivalent: { $0 == $1 }), "Expected oldIndexes to be \(expectedOldIndexes), got \(oldIndexes)")
 	}
+    
+    func testOldIndexForNewIndexWithMoves() {
+        let old = "a b c d e".componentsSeparatedByString(" ")
+        let new = "m c b a f".componentsSeparatedByString(" ")
+        let diff = old.diff(new)
+        let oldIndexes: [Int?] = (0..<new.count).map { diff.oldIndexForNewIndex($0) }
+        let expectedOldIndexes: [Int?] = [nil, 2, 1, 0, nil]
+        XCTAssert(oldIndexes.elementsEqual(expectedOldIndexes, isEquivalent: { $0 == $1 }), "Expected oldIndexes to be \(expectedOldIndexes), got \(oldIndexes)")
+    }
 	
 	func testCustomEqualityOperator() {
 		let old = "a b c d e".componentsSeparatedByString(" ")
@@ -105,8 +123,7 @@ class ArrayDiffTests: XCTestCase {
         let newWrapped = new.map { TestModifyType(value: $0, hashValue: ($0 == "a" ? 0 : 1)) }
         let diff = oldWrapped.diff(newWrapped)
         
-        let expectedModifications = NSMutableIndexSet()
-        expectedModifications.addIndex(1)
+        let expectedModifications = [1: 2]
         
         XCTAssertEqual(expectedModifications, diff.modifiedIndexes)
     }
