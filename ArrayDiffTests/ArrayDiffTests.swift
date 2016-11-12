@@ -12,20 +12,20 @@ import XCTest
 class ArrayDiffTests: XCTestCase {
 	
     func testACommonCase() {
-		let old = "a b c d e".componentsSeparatedByString(" ")
-		let new = "m a b f".componentsSeparatedByString(" ")
+		let old = "a b c d e".components(separatedBy: " ")
+		let new = "m a b f".components(separatedBy: " ")
 		
-		let allFirstIndexes = NSIndexSet(indexesInRange: NSMakeRange(0, old.count))
+		let allFirstIndexes = IndexSet(integersIn: NSMakeRange(0, old.count).toRange()!)
 		
-		let expectedRemoves = NSMutableIndexSet()
-		expectedRemoves.addIndexesInRange(NSMakeRange(2, 3))
+        var expectedRemoves = IndexSet()
+        expectedRemoves.insert(integersIn: 2..<2+3)
 
-		let expectedInserts = NSMutableIndexSet()
-		expectedInserts.addIndex(0)
-		expectedInserts.addIndex(3)
+        var expectedInserts = IndexSet()
+        expectedInserts.insert(0)
+        expectedInserts.insert(3)
 		
 
-		let expectedCommonObjects = "a b".componentsSeparatedByString(" ")
+		let expectedCommonObjects = "a b".components(separatedBy: " ")
 
 		let diff = old.diff(new)
 		
@@ -33,9 +33,9 @@ class ArrayDiffTests: XCTestCase {
 		XCTAssertEqual(expectedRemoves, diff.removedIndexes)
 		XCTAssertEqual(expectedCommonObjects, old[diff.commonIndexes])
 		
-		let removedPlusCommon = NSMutableIndexSet(indexSet: diff.removedIndexes)
-		removedPlusCommon.addIndexes(diff.commonIndexes)
-		XCTAssertEqual(removedPlusCommon, allFirstIndexes)
+        var removedPlusCommon = IndexSet(diff.removedIndexes)
+        removedPlusCommon.formUnion(diff.commonIndexes)
+        XCTAssertEqual(removedPlusCommon, allFirstIndexes)
 		
 		var reconstructed = old
 		reconstructed.removeAtIndexes(diff.removedIndexes)
@@ -44,54 +44,54 @@ class ArrayDiffTests: XCTestCase {
     }
 	
 	func testNewIndexForOldIndex() {
-		let old = "a b c d e".componentsSeparatedByString(" ")
-		let new = "m a b f".componentsSeparatedByString(" ")
+		let old = "a b c d e".components(separatedBy: " ")
+		let new = "m a b f".components(separatedBy: " ")
 		let diff = old.diff(new)
 		let newIndexes: [Int?] = (0..<old.count).map { diff.newIndexForOldIndex($0) }
 		let expectedNewIndexes: [Int?] = [1, 2, nil, nil, nil]
-		XCTAssert(newIndexes.elementsEqual(expectedNewIndexes, isEquivalent: { $0 == $1 }), "Expected newIndexes to be \(expectedNewIndexes), got \(newIndexes)")
+        XCTAssert(newIndexes.elementsEqual(expectedNewIndexes, by: { $0 == $1 }), "Expected newIndexes to be \(expectedNewIndexes), got \(newIndexes)")
 	}
 	
 	func testNewIndexForOldIndexWithInsertTail() {
-		let old = "a b c d".componentsSeparatedByString(" ")
-		let new = "a b c e f g j h d".componentsSeparatedByString(" ")
+		let old = "a b c d".components(separatedBy: " ")
+		let new = "a b c e f g j h d".components(separatedBy: " ")
 		let diff = old.diff(new)
 		let newIndexes: [Int?] = (0..<old.count).map { diff.newIndexForOldIndex($0) }
 		let expectedNewIndexes: [Int?] = [0, 1, 2, 8]
-		XCTAssert(newIndexes.elementsEqual(expectedNewIndexes, isEquivalent: { $0 == $1 }), "Expected newIndexes to be \(expectedNewIndexes), got \(newIndexes)")
+		XCTAssert(newIndexes.elementsEqual(expectedNewIndexes, by: { $0 == $1 }), "Expected newIndexes to be \(expectedNewIndexes), got \(newIndexes)")
 	}
     
     func testNewIndexForOldIndexWithMoves() {
-        let old = "a b c d e".componentsSeparatedByString(" ")
-        let new = "m c b f a".componentsSeparatedByString(" ")
+        let old = "a b c d e".components(separatedBy: " ")
+        let new = "m c b f a".components(separatedBy: " ")
         let diff = old.diff(new)
         let newIndexes: [Int?] = (0..<old.count).map { diff.newIndexForOldIndex($0) }
         let expectedNewIndexes: [Int?] = [4, 2, 1, nil, nil]
-        XCTAssert(newIndexes.elementsEqual(expectedNewIndexes, isEquivalent: { $0 == $1 }), "Expected newIndexes to be \(expectedNewIndexes), got \(newIndexes)")
+        XCTAssert(newIndexes.elementsEqual(expectedNewIndexes, by: { $0 == $1 }), "Expected newIndexes to be \(expectedNewIndexes), got \(newIndexes)")
     }
 	
 	func testOldIndexForNewIndex() {
-		let old = "a b c d e".componentsSeparatedByString(" ")
-		let new = "m a b f".componentsSeparatedByString(" ")
+		let old = "a b c d e".components(separatedBy: " ")
+		let new = "m a b f".components(separatedBy: " ")
 		let diff = old.diff(new)
 		let oldIndexes: [Int?] = (0..<new.count).map { diff.oldIndexForNewIndex($0) }
 		let expectedOldIndexes: [Int?] = [nil, 0, 1, nil]
-		XCTAssert(oldIndexes.elementsEqual(expectedOldIndexes, isEquivalent: { $0 == $1 }), "Expected oldIndexes to be \(expectedOldIndexes), got \(oldIndexes)")
+		XCTAssert(oldIndexes.elementsEqual(expectedOldIndexes, by: { $0 == $1 }), "Expected oldIndexes to be \(expectedOldIndexes), got \(oldIndexes)")
 	}
     
     func testOldIndexForNewIndexWithMoves() {
-        let old = "a b c d e".componentsSeparatedByString(" ")
-        let new = "m c b a f".componentsSeparatedByString(" ")
+        let old = "a b c d e".components(separatedBy: " ")
+        let new = "m c b a f".components(separatedBy: " ")
         let diff = old.diff(new)
         let oldIndexes: [Int?] = (0..<new.count).map { diff.oldIndexForNewIndex($0) }
         let expectedOldIndexes: [Int?] = [nil, 2, 1, 0, nil]
-        XCTAssert(oldIndexes.elementsEqual(expectedOldIndexes, isEquivalent: { $0 == $1 }), "Expected oldIndexes to be \(expectedOldIndexes), got \(oldIndexes)")
+        XCTAssert(oldIndexes.elementsEqual(expectedOldIndexes, by: { $0 == $1 }), "Expected oldIndexes to be \(expectedOldIndexes), got \(oldIndexes)")
     }
 	
 	func testCustomEqualityOperator() {
-		let old = "a b c d e".componentsSeparatedByString(" ")
+		let old = "a b c d e".components(separatedBy: " ")
 		let oldWrapped = old.map { TestType(value: $0) }
-		let new = "m a b f".componentsSeparatedByString(" ")
+		let new = "m a b f".components(separatedBy: " ")
 		let newWrapped = new.map { TestType(value: $0) }
 		let diff = oldWrapped.diff(newWrapped, elementsAreEqual: TestType.customEqual)
 		var reconstructed = oldWrapped
@@ -106,20 +106,20 @@ class ArrayDiffTests: XCTestCase {
 			BasicSection(name: "Alpha", items: [1, 2, 3]),
 			BasicSection(name: "Beta", items: [4, 5])
 		]
-		let indexPath0 = NSIndexPath(indexes: [0, 3], length: 2)
+		let indexPath0 = IndexPath(indexes: [0, 3])
 		XCTAssertNil(sections[indexPath0])
-		let indexPath1 = NSIndexPath(indexes: [2, 0], length: 2)
+		let indexPath1 = IndexPath(indexes: [2, 0])
 		XCTAssertNil(sections[indexPath1])
-		let indexPath2 = NSIndexPath(indexes: [0, 2], length: 2)
+		let indexPath2 = IndexPath(indexes: [0, 2])
 		XCTAssertEqual(sections[indexPath2], 3)
-		let indexPath3 = NSIndexPath(indexes: [1, 0], length: 2)
+		let indexPath3 = IndexPath(indexes: [1, 0])
 		XCTAssertEqual(sections[indexPath3], 4)
 	}
     
     func testModificationDetection() {
-        let old = "a b c d e".componentsSeparatedByString(" ")
+        let old = "a b c d e".components(separatedBy: " ")
         let oldWrapped = old.map { TestModifyType(value: $0, hashValue: 0) }
-        let new = "m a b f".componentsSeparatedByString(" ")
+        let new = "m a b f".components(separatedBy: " ")
         let newWrapped = new.map { TestModifyType(value: $0, hashValue: ($0 == "a" ? 0 : 1)) }
         let diff = oldWrapped.diff(newWrapped)
         
@@ -129,20 +129,20 @@ class ArrayDiffTests: XCTestCase {
     }
     
     func testMovesDetection() {
-        let old = "a b c d e".componentsSeparatedByString(" ")
+        let old = "a b c d e".components(separatedBy: " ")
         let oldWrapped = old.map { TestModifyType(value: $0, hashValue: 0) }
-        let new = "m b f a".componentsSeparatedByString(" ")
+        let new = "m b f a".components(separatedBy: " ")
         let newWrapped = new.map { TestModifyType(value: $0, hashValue: 0) }
         let diff = oldWrapped.diff(newWrapped)
         
-        let expectedRemoved = NSMutableIndexSet()
-        expectedRemoved.addIndex(2)
-        expectedRemoved.addIndex(3)
-        expectedRemoved.addIndex(4)
+        var expectedRemoved = IndexSet()
+        expectedRemoved.insert(2)
+        expectedRemoved.insert(3)
+        expectedRemoved.insert(4)
         
-        let expectedInserted = NSMutableIndexSet()
-        expectedInserted.addIndex(0)
-        expectedInserted.addIndex(2)
+        var expectedInserted = IndexSet()
+        expectedInserted.insert(0)
+        expectedInserted.insert(2)
         
         let expectedMoved = [0:3]
         

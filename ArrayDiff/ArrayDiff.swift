@@ -5,26 +5,26 @@ public struct ArrayDiff {
 	static var debugLogging = false
 	
 	/// The indexes in the old array of the items that were kept
-	public let commonIndexes: NSIndexSet
+	public let commonIndexes: IndexSet
 	/// The indexes in the old array of the items that were removed
-	public let removedIndexes: NSIndexSet
+	public let removedIndexes: IndexSet
 	/// The indexes in the new array of the items that were inserted
-	public let insertedIndexes: NSIndexSet
+	public let insertedIndexes: IndexSet
     /// The map of old indexes to new indexes in the array of the items that were modified
     public let modifiedIndexes: [Int: Int]
     /// The map of old indexes to new indexes in the array of the items that were moved
     public let movedIndexes: [Int: Int]
 	
 	/// Returns nil if the item was inserted
-	public func oldIndexForNewIndex(index: Int) -> Int? {
-		if insertedIndexes.containsIndex(index) { return nil }
+	public func oldIndexForNewIndex(_ index: Int) -> Int? {
+		if insertedIndexes.contains(index) { return nil }
         if let oldIndex = movedIndexes.allKeysForValue(index).first { return oldIndex }
 
         let (removed, inserted) = self.mergedWithMovesRemovedAndInsertedIndexes()
         
 		var result = index
 
-		result -= inserted.countOfIndexesInRange(NSMakeRange(0, index))
+		result -= inserted.count(in: NSMakeRange(0, index).toRange()!)
         for i in removed {
             if i <= result {
                 result += 1
@@ -34,14 +34,14 @@ public struct ArrayDiff {
 	}
 	
 	/// Returns nil if the item was deleted
-	public func newIndexForOldIndex(index: Int) -> Int? {
-		if removedIndexes.containsIndex(index) { return nil }
+	public func newIndexForOldIndex(_ index: Int) -> Int? {
+		if removedIndexes.contains(index) { return nil }
         if let newIndex = movedIndexes[index] { return newIndex }
 
         let (removed, inserted) = self.mergedWithMovesRemovedAndInsertedIndexes()
         
 		var result = index
-		let deletedBefore = removed.countOfIndexesInRange(NSMakeRange(0, index))
+		let deletedBefore = removed.count(in: NSMakeRange(0, index).toRange()!)
 		result -= deletedBefore
 		var insertedAtOrBefore = 0
 		for i in inserted {
@@ -70,16 +70,13 @@ public struct ArrayDiff {
     /**
      Returns removed and inserted indexes if moves treated as removes/inserts
      */
-    public func mergedWithMovesRemovedAndInsertedIndexes() -> (removed: NSIndexSet, inserted: NSIndexSet) {
+    public func mergedWithMovesRemovedAndInsertedIndexes() -> (removed: IndexSet, inserted: IndexSet) {
         
-        let inserted = NSMutableIndexSet()
-        let removed = NSMutableIndexSet()
+        var inserted = IndexSet(insertedIndexes)
+        var removed = IndexSet(removedIndexes)
         
-        inserted.addIndexes(insertedIndexes)
-        removed.addIndexes(removedIndexes)
-        
-        movedIndexes.values.forEach{inserted.addIndex($0)}
-        movedIndexes.keys.forEach{removed.addIndex($0)}
+        movedIndexes.values.forEach{inserted.insert($0)}
+        movedIndexes.keys.forEach{removed.insert($0)}
         
         return (removed, inserted)
     }
@@ -87,31 +84,31 @@ public struct ArrayDiff {
 
 public extension Array {
 	
-    public func diff(other: Array<Element>, elementsAreEqual: ((Element, Element) -> Bool)) -> ArrayDiff {
-		var lengths: [[Int]] = Array<Array<Int>>(
-			count: count + 1,
-			repeatedValue: Array<Int>(
-				count: other.count + 1,
-				repeatedValue: 0)
-		)
-		
-		for i in (0...count).reverse() {
-			for j in (0...other.count).reverse() {
-				if i == count || j == other.count {
-					lengths[i][j] = 0
-				} else if elementsAreEqual(self[i], other[j]) {
-					lengths[i][j] = 1 + lengths[i+1][j+1]
-				} else {
-					lengths[i][j] = max(lengths[i+1][j], lengths[i][j+1])
-				}
-			}
-		}
-		let commonIndexes = NSMutableIndexSet()
+    public func diff(_ other: Array<Element>, elementsAreEqual: ((Element, Element) -> Bool)) -> ArrayDiff {
+        var lengths: [[Int]] = Array<Array<Int>>(
+            repeating: Array<Int>(
+                repeating: 0,
+                count: other.count + 1),
+            count: count + 1
+        )
+        
+        for i in (0...count).reversed() {
+            for j in (0...other.count).reversed() {
+                if i == count || j == other.count {
+                    lengths[i][j] = 0
+                } else if elementsAreEqual(self[i], other[j]) {
+                    lengths[i][j] = 1 + lengths[i+1][j+1]
+                } else {
+                    lengths[i][j] = Swift.max(lengths[i+1][j], lengths[i][j+1])
+                }
+            }
+        }
+		var commonIndexes = IndexSet()
 		var i = 0, j = 0
 
 		while i < count && j < other.count {
 			if elementsAreEqual(self[i], other[j]) {
-				commonIndexes.addIndex(i)
+				commonIndexes.insert(i)
 				i += 1
 				j += 1
 			} else if lengths[i+1][j] >= lengths[i][j+1] {
@@ -121,11 +118,11 @@ public extension Array {
 			}
 		}
 		
-		let removedIndexes = NSMutableIndexSet(indexesInRange: NSMakeRange(0, count))
-		removedIndexes.removeIndexes(commonIndexes)
+		var removedIndexes = IndexSet(integersIn: 0..<count)
+		removedIndexes.subtract(commonIndexes)
 		
 		let commonObjects = self[commonIndexes]
-		let addedIndexes = NSMutableIndexSet()
+		var addedIndexes = IndexSet()
 		i = 0
 		j = 0
 		
@@ -134,23 +131,23 @@ public extension Array {
 				i += 1
 				j += 1
 			} else {
-				addedIndexes.addIndex(j)
+				addedIndexes.insert(j)
 				j += 1
 			}
 		}
         
         var movedIndexes = [Int: Int]()
-        let deletedIndexes = removedIndexes.mutableCopy() as! NSMutableIndexSet
-        let insertedIndexes = addedIndexes.mutableCopy() as! NSMutableIndexSet
+        var deletedIndexes = removedIndexes
+        var insertedIndexes = addedIndexes
         
         for oldIndex in removedIndexes {
             
             let oldElement = self[oldIndex]
             
-            if let newIndex = other.indexOf({ elementsAreEqual ($0, oldElement)}) {
+            if let newIndex = other.index(where: { elementsAreEqual ($0, oldElement)}) {
                 
-                deletedIndexes.removeIndex(oldIndex)
-                insertedIndexes.removeIndex(newIndex)
+                deletedIndexes.remove(oldIndex)
+                insertedIndexes.remove(newIndex)
                 
                 movedIndexes[oldIndex] = newIndex
             }
@@ -161,19 +158,24 @@ public extension Array {
 }
 
 public extension Array where Element: Equatable {
-	public func diff(other: Array<Element>) -> ArrayDiff {
-		return self.diff(other, elementsAreEqual: { $0 == $1 })
-	}
+    public func diff(_ other: Array<Element>) -> ArrayDiff {
+        return self.diff(other, elementsAreEqual: { $0 == $1 })
+    }
 }
 public extension Array where Element: Hashable {
-    public func diff(other: Array<Element>) -> ArrayDiff {
-        let diff = self.diff(other, elementsAreEqual: { $0 == $1 })
+    public func diff(_ other: Array<Element>) -> ArrayDiff {
+        let diff = self.diff(other, elementsAreEqual: {
+            let result = $0 == $1
+            return result
+        }) //Simple $0 == $1 crashes Swift compiler
 
         var modifiedIndexes = [Int: Int]()
         
         for index in diff.commonIndexes {
-            if let newIndex = diff.newIndexForOldIndex(index) where self[index].hashValue != other[newIndex].hashValue {
-                modifiedIndexes[index] = newIndex
+            if let newIndex = diff.newIndexForOldIndex(index) {
+                if self[index].hashValue != other[newIndex].hashValue {
+                    modifiedIndexes[index] = newIndex
+                }
             }
         }
         
@@ -182,7 +184,7 @@ public extension Array where Element: Hashable {
 }
 
 extension Dictionary where Value : Equatable {
-    func allKeysForValue(val : Value) -> [Key] {
+    func allKeysForValue(_ val : Value) -> [Key] {
         return self.filter { $1 == val }.map { $0.0 }
     }
 }
